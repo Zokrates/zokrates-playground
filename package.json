@@ -1,5 +1,5 @@
 {
-  "name": "zokrates-cloud",
+  "name": "zokrates-playground",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,12 +9,23 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@chakra-ui/react": "^1.8.8",
+    "@emotion/react": "^11.9.0",
+    "@emotion/styled": "^11.8.1",
+    "@monaco-editor/react": "^4.4.5",
+    "copy-to-clipboard": "^3.3.2",
+    "framer-motion": "^6.3.2",
     "next": "12.1.5",
+    "nextjs": "^0.0.3",
+    "pako": "^2.0.4",
     "react": "18.1.0",
-    "react-dom": "18.1.0"
+    "react-dom": "18.1.0",
+    "react-icons": "^4.4.0",
+    "zokrates-js": "^1.1.1"
   },
   "devDependencies": {
     "@types/node": "17.0.29",
+    "@types/pako": "^2.0.0",
     "@types/react": "18.0.8",
     "@types/react-dom": "18.0.0",
     "eslint": "8.14.0",

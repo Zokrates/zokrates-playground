@@ -1,0 +1,7 @@
+import "hashes/sha256/sha256Padded";
+
+def main(u8[4] input, u32[8] expected_hash) {
+    u32[8] hash = sha256Padded(input);
+    assert(hash == expected_hash);
+    return;
+}
