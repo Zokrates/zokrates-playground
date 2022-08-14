@@ -224,8 +224,9 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
           </HStack>
         </Flex>
         <Flex grow={1} width="100%" border="1px" borderColor="gray.200">
-          <Flex flex={1}>
+          <Flex flex={1} minW="568px">
             <Editor
+              width="100%"
               options={{
                 minimap: { enabled: false },
                 hideCursorInOverviewRuler: true,
