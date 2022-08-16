@@ -240,7 +240,6 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
             <Tabs width="100%">
               <TabList>
                 <Tab>Output</Tab>
-                <Tab>Compute</Tab>
                 <Tab>Abi</Tab>
               </TabList>
               <TabPanels>
@@ -256,7 +255,6 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
                     </Code>
                   )}
                 </TabPanel>
-                <TabPanel>TBD</TabPanel>
                 <TabPanel>
                   {artifacts && (
                     <Code display="block" whiteSpace="pre" bg="white">
