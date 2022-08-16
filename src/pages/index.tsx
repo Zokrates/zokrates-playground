@@ -207,7 +207,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
                     in Solidity.
                   </Text>
                   <Text fontSize="sm" p={4} bg="gray.100" color="gray.600">
-                    ZoKrates Playground version: {metadata.version}
+                    ZoKrates version: {metadata.version}
                   </Text>
                 </PopoverBody>
               </PopoverContent>
