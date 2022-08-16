@@ -247,7 +247,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
                   {output && (
                     <Code
                       display="block"
-                      whiteSpace="pre"
+                      whiteSpace="pre-wrap"
                       bg="white"
                       color={output.type == "error" ? "red" : "green"}
                     >
