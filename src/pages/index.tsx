@@ -1,41 +1,40 @@
 import {
-  Box,
   Button,
   Code,
   Flex,
   HStack,
   IconButton,
+  Popover,
+  PopoverArrow,
+  PopoverBody,
+  PopoverCloseButton,
+  PopoverContent,
+  PopoverHeader,
+  PopoverTrigger,
   Select,
   Tab,
   TabList,
   TabPanel,
   TabPanels,
   Tabs,
+  Text,
   useToast,
   VStack,
-  Text,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  PopoverCloseButton,
-  PopoverBody,
-  PopoverHeader,
-  PopoverArrow,
 } from "@chakra-ui/react";
 import Editor from "@monaco-editor/react";
 import copy from "copy-to-clipboard";
+import { readdir, readFile } from "fs/promises";
 import type { NextPage } from "next";
 import { deflate, inflate } from "pako";
 import { useEffect, useRef, useState } from "react";
 import {
   BsFillPlayFill,
   BsGithub,
-  BsShareFill,
   BsQuestionCircleFill,
+  BsShareFill,
 } from "react-icons/bs";
 import { metadata } from "zokrates-js";
 import { zokratesLanguageConfig, zokratesTokensProvider } from "../syntax";
-import { readdir, readFile } from "fs/promises";
 
 const MODEL = "zokrates";
 
@@ -47,7 +46,7 @@ type HomeProps = {
 
 const Home: NextPage<HomeProps> = (props: HomeProps) => {
   const [worker, setWorker] = useState<any>(null);
-  const [artifacts, setArtifacts] = useState<any>({});
+  const [artifacts, setArtifacts] = useState<any>(null);
   const [output, setOutput] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -156,6 +155,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
               onClick={onCompile}
               isLoading={isLoading}
               loadingText="Compiling"
+              disabled={!worker || !editorRef}
             >
               Compile
             </Button>
@@ -181,6 +181,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
               isRound={true}
               icon={<BsShareFill />}
               onClick={onShare}
+              disabled={!editorRef}
             />
             <Popover isLazy placement="bottom-end">
               {/* @ts-ignore */}
@@ -223,8 +224,14 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
             />
           </HStack>
         </Flex>
-        <Flex grow={1} width="100%" border="1px" borderColor="gray.200">
-          <Flex flex={1} minW="568px">
+        <Flex
+          grow={1}
+          wrap="wrap"
+          width="100%"
+          border="1px"
+          borderColor="gray.200"
+        >
+          <Flex grow={1} shrink={0} basis="20em" minW="536px">
             <Editor
               width="100%"
               options={{
@@ -236,7 +243,14 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
               onMount={handleEditorDidMount}
             />
           </Flex>
-          <Flex flex={1} borderLeft="1px" borderColor="gray.200">
+          <Flex
+            grow={1}
+            shrink={0}
+            basis="20em"
+            borderLeft="1px"
+            borderColor="gray.200"
+            minH="536px"
+          >
             <Tabs width="100%">
               <TabList>
                 <Tab>Output</Tab>
