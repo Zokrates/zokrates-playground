@@ -24,6 +24,7 @@ import {
 import Editor from "@monaco-editor/react";
 import copy from "copy-to-clipboard";
 import { readdir, readFile } from "fs/promises";
+import { debounce } from "lodash";
 import type { NextPage } from "next";
 import { deflate, inflate } from "pako";
 import { useEffect, useRef, useState } from "react";
@@ -36,7 +37,7 @@ import {
 import { metadata } from "zokrates-js";
 import { zokratesLanguageConfig, zokratesTokensProvider } from "../syntax";
 
-const MODEL = "zokrates";
+const MODEL_ID = "zokrates";
 
 type HomeProps = {
   examples: {
@@ -45,18 +46,38 @@ type HomeProps = {
 };
 
 const Home: NextPage<HomeProps> = (props: HomeProps) => {
+  const [examples, setExamples] = useState<any>(props.examples);
   const [worker, setWorker] = useState<any>(null);
   const [artifacts, setArtifacts] = useState<any>(null);
   const [output, setOutput] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const editorRef = useRef<any>(null);
+  const selectRef = useRef<any>(null);
   const toast = useToast();
 
   useEffect(() => {
     const worker = new Worker(new URL("../worker.js", import.meta.url));
     worker.onmessage = onWorkerMessage;
-    setWorker(worker);
+    setWorker(() => worker);
+
+    if (!window.location.hash) {
+      const defaultSource = localStorage.getItem("default-source");
+      if (defaultSource) {
+        let { source, timestamp } = JSON.parse(defaultSource);
+        toast({
+          description: `Restored from last session (${new Date(
+            timestamp
+          ).toLocaleString()})`,
+          status: "info",
+          duration: 3500,
+          position: "top",
+          isClosable: true,
+        });
+        setExamples((e: any) => Object.assign(e, { default: source }));
+      }
+    }
+
     return () => worker.terminate();
   }, []);
 
@@ -72,25 +93,34 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
         const compressed = Buffer.from(encoded, "base64");
         value = Buffer.from(inflate(compressed)).toString();
       } else {
-        value = props.examples["default"];
+        value = examples["default"];
       }
     } catch (e) {
       console.error(e);
-      value = props.examples["default"];
+      value = examples["default"];
     }
 
-    const model = monaco.editor.createModel(value, MODEL);
+    const model = monaco.editor.createModel(value, MODEL_ID);
     model.updateOptions({ insertSpaces: true, tabSize: 4 });
     editor.setModel(model);
-    monaco.editor.setModelLanguage(model, MODEL);
+    monaco.editor.setModelLanguage(model, MODEL_ID);
     editorRef.current = editor;
   };
 
   const handleEditorWillMount = (monaco: any) => {
-    monaco.languages.register({ id: MODEL });
-    monaco.languages.setMonarchTokensProvider(MODEL, zokratesTokensProvider);
-    monaco.languages.setLanguageConfiguration(MODEL, zokratesLanguageConfig);
+    monaco.languages.register({ id: MODEL_ID });
+    monaco.languages.setMonarchTokensProvider(MODEL_ID, zokratesTokensProvider);
+    monaco.languages.setLanguageConfiguration(MODEL_ID, zokratesLanguageConfig);
   };
+
+  const onEditorChange = debounce((value) => {
+    if (window.location.hash) return;
+    if (selectRef.current.value !== "default") return;
+    localStorage.setItem(
+      "default-source",
+      JSON.stringify({ source: value, timestamp: Date.now() })
+    );
+  }, 250);
 
   const onCompile = () => {
     const source = editorRef.current.getValue();
@@ -160,16 +190,17 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
               Compile
             </Button>
             <Select
+              ref={selectRef}
               variant="filled"
               width="200px"
               defaultValue="default"
               onChange={(e) => {
                 editorRef.current
                   .getModel()
-                  .setValue(props.examples[e.currentTarget.value]);
+                  .setValue(examples[e.currentTarget.value]);
               }}
             >
-              {Object.keys(props.examples).map((key) => {
+              {Object.keys(examples).map((key) => {
                 return <option key={key}>{key}</option>;
               })}
             </Select>
@@ -241,6 +272,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
               }}
               beforeMount={handleEditorWillMount}
               onMount={handleEditorDidMount}
+              onChange={onEditorChange}
             />
           </Flex>
           <Flex
