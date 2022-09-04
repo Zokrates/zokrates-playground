@@ -27,7 +27,7 @@ import { readdir, readFile } from "fs/promises";
 import { debounce } from "lodash";
 import type { NextPage } from "next";
 import { deflate, inflate } from "pako";
-import { useEffect, useRef, useState } from "react";
+import { ComponentType, useEffect, useRef, useState } from "react";
 import {
   BsFillPlayFill,
   BsGithub,
@@ -36,17 +36,22 @@ import {
 } from "react-icons/bs";
 import { metadata } from "zokrates-js";
 import { zokratesLanguageConfig, zokratesTokensProvider } from "../syntax";
+import { AllotmentProps } from "allotment";
+import { PaneProps } from "allotment/dist/types/src/allotment";
+import "allotment/dist/style.css";
 
 const MODEL_ID = "zokrates";
 
+type Examples = {
+  [key: string]: string;
+};
+
 type HomeProps = {
-  examples: {
-    [key: string]: string;
-  };
+  examples: Examples;
 };
 
 const Home: NextPage<HomeProps> = (props: HomeProps) => {
-  const [examples, setExamples] = useState<any>(props.examples);
+  const [examples, setExamples] = useState<Examples>(props.examples);
   const [worker, setWorker] = useState<any>(null);
   const [artifacts, setArtifacts] = useState<any>(null);
   const [output, setOutput] = useState<any>(null);
@@ -56,15 +61,27 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
   const selectRef = useRef<any>(null);
   const toast = useToast();
 
+  const [Allotment, setAllotment] = useState<
+    (ComponentType<AllotmentProps> & { Pane: ComponentType<PaneProps> }) | null
+  >(null);
+
   useEffect(() => {
+    import("allotment")
+      .then((mod) => {
+        setAllotment(() => mod.Allotment);
+      })
+      .catch((err) =>
+        console.error(err, `Could not import allotment: ${err.message}`)
+      );
+
     const worker = new Worker(new URL("../worker.js", import.meta.url));
     worker.onmessage = onWorkerMessage;
     setWorker(() => worker);
 
     if (!window.location.hash) {
-      const defaultSource = localStorage.getItem("default-source");
-      if (defaultSource) {
-        let { source, timestamp } = JSON.parse(defaultSource);
+      const userData = localStorage.getItem("user-data");
+      if (userData) {
+        const { source, timestamp } = JSON.parse(userData);
         toast({
           description: `Restored from last session (${new Date(
             timestamp
@@ -74,12 +91,16 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
           position: "top",
           isClosable: true,
         });
-        setExamples((e: any) => Object.assign(e, { default: source }));
+        setExamples((e: Examples) => Object.assign(e, { user: source }));
       }
     }
 
     return () => worker.terminate();
   }, []);
+
+  if (!Allotment) {
+    return <></>;
+  }
 
   const postMessage = (type: string, payload: any) => {
     worker.postMessage({ type, payload });
@@ -93,11 +114,11 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
         const compressed = Buffer.from(encoded, "base64");
         value = Buffer.from(inflate(compressed)).toString();
       } else {
-        value = examples["default"];
+        value = examples["user"];
       }
     } catch (e) {
       console.error(e);
-      value = examples["default"];
+      value = examples["user"];
     }
 
     const model = monaco.editor.createModel(value, MODEL_ID);
@@ -114,10 +135,9 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
   };
 
   const onEditorChange = debounce((value) => {
-    if (window.location.hash) return;
-    if (selectRef.current.value !== "default") return;
+    if (window.location.hash || selectRef.current.value !== "user") return;
     localStorage.setItem(
-      "default-source",
+      "user-data",
       JSON.stringify({ source: value, timestamp: Date.now() })
     );
   }, 250);
@@ -193,7 +213,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
               ref={selectRef}
               variant="filled"
               width="200px"
-              defaultValue="default"
+              defaultValue="user"
               onChange={(e) => {
                 editorRef.current
                   .getModel()
@@ -255,62 +275,51 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
             />
           </HStack>
         </Flex>
-        <Flex
-          grow={1}
-          wrap="wrap"
-          width="100%"
-          border="1px"
-          borderColor="gray.200"
-        >
-          <Flex grow={1} shrink={0} basis="20em" minW="536px">
-            <Editor
-              width="100%"
-              options={{
-                minimap: { enabled: false },
-                hideCursorInOverviewRuler: true,
-                fontSize: 18,
-              }}
-              beforeMount={handleEditorWillMount}
-              onMount={handleEditorDidMount}
-              onChange={onEditorChange}
-            />
-          </Flex>
-          <Flex
-            grow={1}
-            shrink={0}
-            basis="20em"
-            borderLeft="1px"
-            borderColor="gray.200"
-            minH="536px"
-          >
-            <Tabs width="100%">
-              <TabList>
-                <Tab>Output</Tab>
-                <Tab>Abi</Tab>
-              </TabList>
-              <TabPanels>
-                <TabPanel>
-                  {output && (
-                    <Code
-                      display="block"
-                      whiteSpace="pre-wrap"
-                      bg="white"
-                      color={output.type == "error" ? "red" : "green"}
-                    >
-                      [{output.timestamp}] {output.message}
-                    </Code>
-                  )}
-                </TabPanel>
-                <TabPanel>
-                  {artifacts && (
-                    <Code display="block" whiteSpace="pre" bg="white">
-                      {JSON.stringify(artifacts.abi, null, 2)}
-                    </Code>
-                  )}
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
-          </Flex>
+        <Flex grow={1} width="100%" border="1px" borderColor="gray.200">
+          <Allotment>
+            <Allotment.Pane minSize={200}>
+              <Editor
+                width="100%"
+                options={{
+                  minimap: { enabled: false },
+                  hideCursorInOverviewRuler: true,
+                  fontSize: 18,
+                }}
+                beforeMount={handleEditorWillMount}
+                onMount={handleEditorDidMount}
+                onChange={onEditorChange}
+              />
+            </Allotment.Pane>
+            <Allotment.Pane snap>
+              <Tabs width="100%" height="100%">
+                <TabList>
+                  <Tab>Output</Tab>
+                  <Tab>Abi</Tab>
+                </TabList>
+                <TabPanels>
+                  <TabPanel>
+                    {output && (
+                      <Code
+                        display="block"
+                        whiteSpace="pre-wrap"
+                        bg="white"
+                        color={output.type == "error" ? "red" : "green"}
+                      >
+                        [{output.timestamp}] {output.message}
+                      </Code>
+                    )}
+                  </TabPanel>
+                  <TabPanel>
+                    {artifacts && (
+                      <Code display="block" whiteSpace="pre" bg="white">
+                        {JSON.stringify(artifacts.abi, null, 2)}
+                      </Code>
+                    )}
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            </Allotment.Pane>
+          </Allotment>
         </Flex>
       </VStack>
     </Flex>
