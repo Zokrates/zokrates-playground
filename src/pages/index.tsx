@@ -66,6 +66,10 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
   >(null);
 
   useEffect(() => {
+    let worker = new Worker(new URL("../worker.js", import.meta.url));
+    worker.onmessage = onWorkerMessage;
+    setWorker(() => worker);
+
     import("allotment")
       .then((mod) => {
         setAllotment(() => mod.Allotment);
@@ -73,10 +77,6 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
       .catch((err) =>
         console.error(err, `Could not import allotment: ${err.message}`)
       );
-
-    const worker = new Worker(new URL("../worker.js", import.meta.url));
-    worker.onmessage = onWorkerMessage;
-    setWorker(() => worker);
 
     if (!window.location.hash) {
       const userData = localStorage.getItem("user-data");
@@ -100,6 +100,35 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
 
   if (!Allotment) {
     return <></>;
+  }
+
+  function onWorkerMessage(event: any) {
+    setIsLoading(false);
+    const message = event.data;
+    switch (message.type) {
+      case "compile": {
+        setArtifacts(message.payload);
+        setOutput({
+          type: "success",
+          message: `Compilation successful (took ${(
+            message.span.end - message.span.start
+          ).toFixed(2)} ms) ✔️`,
+          timestamp: new Date().toISOString(),
+        });
+        break;
+      }
+      case "error": {
+        console.error(message.payload.error);
+        setOutput({
+          type: "error",
+          message: message.payload.error,
+          timestamp: new Date().toISOString(),
+        });
+        break;
+      }
+      default:
+        break;
+    }
   }
 
   const postMessage = (type: string, payload: any) => {
@@ -143,6 +172,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
   }, 250);
 
   const onCompile = () => {
+    if (!editorRef.current) return;
     const source = editorRef.current.getValue();
     setIsLoading(true);
     setTimeout(() => postMessage("compile", source), 100);
@@ -161,35 +191,6 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
         position: "top",
         isClosable: true,
       });
-    }
-  };
-
-  const onWorkerMessage = (event: any) => {
-    setIsLoading(false);
-    const message = event.data;
-    switch (message.type) {
-      case "compile": {
-        setArtifacts(message.payload);
-        setOutput({
-          type: "success",
-          message: `Compilation successful (took ${(
-            message.span.end - message.span.start
-          ).toFixed(2)} ms) ✔️`,
-          timestamp: new Date().toISOString(),
-        });
-        break;
-      }
-      case "error": {
-        console.error(message.payload.error);
-        setOutput({
-          type: "error",
-          message: message.payload.error,
-          timestamp: new Date().toISOString(),
-        });
-        break;
-      }
-      default:
-        break;
     }
   };
 
