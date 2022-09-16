@@ -22,23 +22,21 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import Editor from "@monaco-editor/react";
+import { AllotmentProps } from "allotment";
+import "allotment/dist/style.css";
+import { PaneProps } from "allotment/dist/types/src/allotment";
 import copy from "copy-to-clipboard";
 import { readdir, readFile } from "fs/promises";
 import { debounce } from "lodash";
 import type { NextPage } from "next";
 import { deflate, inflate } from "pako";
 import { ComponentType, useEffect, useRef, useState } from "react";
-import {
-  BsFillPlayFill,
-  BsGithub,
-  BsQuestionCircleFill,
-  BsShareFill,
-} from "react-icons/bs";
+import { BsGithub, BsQuestionCircleFill, BsShareFill } from "react-icons/bs";
+import { TbRefresh } from "react-icons/tb";
 import { metadata } from "zokrates-js";
+import { Executor } from "../components/Executor";
+import { ZoKratesWorker } from "../components/ZoKratesWorker";
 import { zokratesLanguageConfig, zokratesTokensProvider } from "../syntax";
-import { AllotmentProps } from "allotment";
-import { PaneProps } from "allotment/dist/types/src/allotment";
-import "allotment/dist/style.css";
 
 const MODEL_ID = "zokrates";
 
@@ -66,8 +64,8 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
   >(null);
 
   useEffect(() => {
-    let worker = new Worker(new URL("../worker.js", import.meta.url));
-    worker.onmessage = onWorkerMessage;
+    let worker = new ZoKratesWorker();
+    let subscription = worker.onMessage().subscribe(onWorkerMessage);
     setWorker(() => worker);
 
     import("allotment")
@@ -95,7 +93,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
       }
     }
 
-    return () => worker.terminate();
+    return () => subscription.unsubscribe();
   }, []);
 
   if (!Allotment) {
@@ -107,7 +105,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
     const message = event.data;
     switch (message.type) {
       case "compile": {
-        setArtifacts(message.payload);
+        setArtifacts(() => message.payload);
         setOutput({
           type: "success",
           message: `Compilation successful (took ${(
@@ -118,6 +116,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
         break;
       }
       case "error": {
+        if (message.payload.type !== "compile") return;
         console.error(message.payload.error);
         setOutput({
           type: "error",
@@ -130,10 +129,6 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
         break;
     }
   }
-
-  const postMessage = (type: string, payload: any) => {
-    worker.postMessage({ type, payload });
-  };
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
     let value;
@@ -175,7 +170,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
     if (!editorRef.current) return;
     const source = editorRef.current.getValue();
     setIsLoading(true);
-    setTimeout(() => postMessage("compile", source), 100);
+    setTimeout(() => worker.postMessage("compile", source), 100);
   };
 
   const onShare = () => {
@@ -200,7 +195,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
         <Flex p={4} width="100%" justifyContent="space-between">
           <HStack spacing="12px">
             <Button
-              leftIcon={<BsFillPlayFill />}
+              leftIcon={<TbRefresh />}
               colorScheme="blue"
               variant="solid"
               onClick={onCompile}
@@ -294,8 +289,9 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
             <Allotment.Pane snap>
               <Tabs width="100%" height="100%">
                 <TabList>
-                  <Tab>Output</Tab>
-                  <Tab>Abi</Tab>
+                  <Tab _focus={{ outline: 0 }}>Output</Tab>
+                  {artifacts && <Tab _focus={{ outline: 0 }}>Execute</Tab>}
+                  <Tab _focus={{ outline: 0 }}>Abi</Tab>
                 </TabList>
                 <TabPanels>
                   <TabPanel>
@@ -310,6 +306,11 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
                       </Code>
                     )}
                   </TabPanel>
+                  {artifacts && (
+                    <TabPanel>
+                      <Executor worker={worker} artifacts={artifacts} />
+                    </TabPanel>
+                  )}
                   <TabPanel>
                     {artifacts && (
                       <Code display="block" whiteSpace="pre" bg="white">

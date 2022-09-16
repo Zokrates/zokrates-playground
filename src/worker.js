@@ -11,7 +11,9 @@ async function init() {
         try {
           switch (type) {
             case "compile": {
-              const artifacts = zokratesProvider.compile(payload);
+              const artifacts = zokratesProvider.compile(payload, {
+                config: { debug: true },
+              });
               const end = performance.now();
               ctx.postMessage({
                 type: type,
@@ -19,6 +21,20 @@ async function init() {
                 span: { start, end },
               });
               break;
+            }
+            case "compute": {
+              let logs = [];
+              const { output } = zokratesProvider.computeWitness(
+                payload.artifacts,
+                payload.args,
+                { logCallback: (l) => logs.push(l) }
+              );
+              const end = performance.now();
+              ctx.postMessage({
+                type: type,
+                payload: { output, logs },
+                span: { start, end },
+              });
             }
             default:
               break;
