@@ -287,13 +287,18 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
               />
             </Allotment.Pane>
             <Allotment.Pane snap>
-              <Tabs width="100%" height="100%">
+              <Tabs
+                display="flex"
+                flexDirection="column"
+                width="100%"
+                height="100%"
+              >
                 <TabList>
                   <Tab _focus={{ outline: 0 }}>Output</Tab>
                   {artifacts && <Tab _focus={{ outline: 0 }}>Execute</Tab>}
                   <Tab _focus={{ outline: 0 }}>Abi</Tab>
                 </TabList>
-                <TabPanels>
+                <TabPanels flexGrow={1} overflowY="scroll">
                   <TabPanel>
                     {output && (
                       <Code

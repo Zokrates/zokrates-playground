@@ -188,7 +188,7 @@ const Executor = (props: ExecutorProps) => {
     );
     const subscription = props.worker.onMessage().subscribe(onWorkerMessage);
     return () => subscription.unsubscribe();
-  }, [abi]);
+  }, [props]);
 
   const onInputChange = (key: string, value: string) =>
     setInputs({
