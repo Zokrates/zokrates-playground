@@ -33,7 +33,7 @@ import { deflate, inflate } from "pako";
 import { ComponentType, useEffect, useRef, useState } from "react";
 import { BsGithub, BsQuestionCircleFill, BsShareFill } from "react-icons/bs";
 import { TbRefresh } from "react-icons/tb";
-import { metadata } from "zokrates-js";
+import { CompilationArtifacts, metadata } from "zokrates-js";
 import { Executor } from "../components/Executor";
 import { ZoKratesWorker } from "../components/ZoKratesWorker";
 import { zokratesLanguageConfig, zokratesTokensProvider } from "../syntax";
@@ -50,8 +50,8 @@ type HomeProps = {
 
 const Home: NextPage<HomeProps> = (props: HomeProps) => {
   const [examples, setExamples] = useState<Examples>(props.examples);
-  const [worker, setWorker] = useState<any>(null);
-  const [artifacts, setArtifacts] = useState<any>(null);
+  const [worker, setWorker] = useState<ZoKratesWorker | null>(null);
+  const [artifacts, setArtifacts] = useState<CompilationArtifacts | null>(null);
   const [output, setOutput] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -96,11 +96,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (!Allotment) {
-    return <></>;
-  }
-
-  function onWorkerMessage(event: any) {
+  const onWorkerMessage = (event: any) => {
     setIsLoading(false);
     const message = event.data;
     switch (message.type) {
@@ -128,7 +124,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
       default:
         break;
     }
-  }
+  };
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
     let value;
@@ -170,7 +166,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
     if (!editorRef.current) return;
     const source = editorRef.current.getValue();
     setIsLoading(true);
-    setTimeout(() => worker.postMessage("compile", source), 100);
+    setTimeout(() => worker?.postMessage("compile", source), 100);
   };
 
   const onShare = () => {
@@ -188,6 +184,10 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
       });
     }
   };
+
+  if (!Allotment) {
+    return <></>;
+  }
 
   return (
     <Flex as="main" minHeight="100vh">
@@ -306,7 +306,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
                       </Code>
                     )}
                   </TabPanel>
-                  {artifacts && (
+                  {worker && artifacts && (
                     <TabPanel>
                       <Executor worker={worker} artifacts={artifacts} />
                     </TabPanel>

@@ -6,13 +6,37 @@ import {
   FormLabel,
   Input,
   Text,
+  Tooltip,
   VStack,
 } from "@chakra-ui/react";
 import jsonschema, { Schema } from "jsonschema";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { BsFillPlayFill } from "react-icons/bs";
 import { CompilationArtifacts } from "zokrates-js";
 import { ZoKratesWorker } from "./ZoKratesWorker";
+
+type ExecutorProps = {
+  worker: ZoKratesWorker;
+  artifacts: CompilationArtifacts;
+};
+
+type InputComponent = {
+  component: any;
+  value: string;
+  validator: (value: string) => boolean;
+  transformedValue?: any;
+};
+
+type InputState = {
+  [key: string]: InputComponent;
+};
+
+type OutputState = {
+  type: string;
+  message: string;
+  timestamp: string;
+  logs?: string[];
+} | null;
 
 const createValidationSchema = (component: any): Schema => {
   switch (component.type) {
@@ -103,23 +127,22 @@ const fromJson = (input: string) => {
 };
 
 const createValidator = (component: any) => {
-  return (value: string) =>
-    value &&
-    jsonschema.validate(value, createValidationSchema(component)).valid;
-};
-
-type ExecutorProps = {
-  worker: ZoKratesWorker;
-  artifacts: CompilationArtifacts;
+  return (value: string) => {
+    const result = jsonschema.validate(
+      value,
+      createValidationSchema(component)
+    );
+    return result;
+  };
 };
 
 const Executor = (props: ExecutorProps) => {
   const abi = props.artifacts.abi;
-  const [inputs, setInputs] = useState<{ [key: string]: any }>({});
-  const [output, setOutput] = useState<any>(null);
+  const [inputs, setInputs] = useState<InputState>({});
+  const [output, setOutput] = useState<OutputState>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  function onWorkerMessage(event: any) {
+  const onWorkerMessage = (event: any) => {
     setIsLoading(false);
     const message = event.data;
     switch (message.type) {
@@ -146,7 +169,7 @@ const Executor = (props: ExecutorProps) => {
       default:
         break;
     }
-  }
+  };
 
   useEffect(() => {
     setOutput(null);
@@ -167,29 +190,32 @@ const Executor = (props: ExecutorProps) => {
     return () => subscription.unsubscribe();
   }, [abi]);
 
-  const onInputChange = (key: any, value: any) =>
+  const onInputChange = (key: string, value: string) =>
     setInputs({
       ...inputs,
-      [key]: { ...inputs[key], value, transformed: fromJson(value) },
+      [key]: { ...inputs[key], value, transformedValue: fromJson(value) },
     });
 
-  const getTransformedValue = (i: any) => {
+  const getTransformedValue = (i: InputComponent) => {
     if (/u\d+|field/.test(i.component.type)) {
       return i.value;
     }
-    return i.transformed;
+    return i.transformedValue;
   };
 
-  const onExecute = (e: any) => {
+  const onExecute = (e: FormEvent<HTMLDivElement>) => {
     e.preventDefault();
-
     setOutput(null);
     setIsLoading(true);
+
     setTimeout(() => {
-      props.worker.postMessage("compute", {
+      const payload = {
         artifacts: props.artifacts,
-        args: Object.values(inputs).map((i) => getTransformedValue(i)),
-      });
+        args: Object.values(inputs).map((i: InputComponent) =>
+          getTransformedValue(i)
+        ),
+      };
+      props.worker.postMessage("compute", payload);
     }, 100);
   };
 
@@ -201,28 +227,36 @@ const Executor = (props: ExecutorProps) => {
       onSubmit={onExecute}
       minW={"200px"}
     >
-      {Object.entries(inputs).map(([key, input]: [string, any]) => (
-        <FormControl
-          key={key}
-          isInvalid={
-            input.value && !input.validator(getTransformedValue(input))
-          }
-        >
-          <FormLabel>
-            <Text fontWeight="bold" as="span">
-              {key}
-            </Text>
-            : {input.component.type}
-          </FormLabel>
-          <Input
-            type="text"
-            value={input.value}
-            onChange={(e) => onInputChange(key, e.target.value)}
-            required={true}
-            fontFamily="monospace"
-          />
-        </FormControl>
-      ))}
+      {Object.entries(inputs).map(([key, input]: [string, any]) => {
+        const validationResult = input.validator(getTransformedValue(input));
+        const isInvalid = input.value != "" && !validationResult.valid;
+        return (
+          <FormControl key={key} isInvalid={isInvalid}>
+            <FormLabel>
+              <Text fontWeight="bold" as="span">
+                {key}
+              </Text>
+              : {input.component.type}
+            </FormLabel>
+            <Tooltip
+              hasArrow
+              label={validationResult.toString()}
+              bg="red.600"
+              isDisabled={!isInvalid}
+              as="pre"
+              whiteSpace="pre-wrap"
+            >
+              <Input
+                type="text"
+                value={input.value}
+                onChange={(e) => onInputChange(key, e.target.value)}
+                required={true}
+                fontFamily="monospace"
+              />
+            </Tooltip>
+          </FormControl>
+        );
+      })}
       <Button
         type="submit"
         leftIcon={<BsFillPlayFill />}
