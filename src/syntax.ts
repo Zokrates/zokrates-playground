@@ -25,6 +25,7 @@ export const zokratesLanguageConfig = {
     keywords: [
       "log",
       "assert",
+      "asm",
       "as",
       "bool",
       "const",
