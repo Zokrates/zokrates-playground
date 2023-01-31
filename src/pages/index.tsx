@@ -106,7 +106,9 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
           type: "success",
           message: `Compiled successfully in ${(
             message.span.end - message.span.start
-          ).toFixed(2)} ms (${message.payload.constraintCount} constraints) ✔️`,
+          ).toFixed(2)} ms (${message.payload.constraintCount} constraint${
+            message.payload.constraintCount > 1 ? "s" : ""
+          }) ✔️`,
           timestamp: new Date().toISOString(),
         });
         break;
