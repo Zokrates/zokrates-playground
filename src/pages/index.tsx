@@ -104,9 +104,9 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
         setArtifacts(() => message.payload);
         setOutput({
           type: "success",
-          message: `Compilation successful (took ${(
+          message: `Compiled successfully in ${(
             message.span.end - message.span.start
-          ).toFixed(2)} ms) ✔️`,
+          ).toFixed(2)} ms (${message.payload.constraintCount} constraints) ✔️`,
           timestamp: new Date().toISOString(),
         });
         break;
