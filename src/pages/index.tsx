@@ -1,4 +1,6 @@
 import {
+  Alert,
+  AlertIcon,
   Button,
   Code,
   Flex,
@@ -37,6 +39,7 @@ import { CompilationArtifacts, metadata } from "zokrates-js";
 import { Executor } from "../components/Executor";
 import { ZoKratesWorker } from "../components/ZoKratesWorker";
 import { zokratesLanguageConfig, zokratesTokensProvider } from "../syntax";
+import prettyBytes from "pretty-bytes";
 
 const MODEL_ID = "zokrates";
 
@@ -104,11 +107,11 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
         setArtifacts(() => message.payload);
         setOutput({
           type: "success",
-          message: `Compiled successfully in ${(
+          message: `Successfully compiled in ${(
             message.span.end - message.span.start
-          ).toFixed(2)} ms (${message.payload.constraintCount} constraint${
-            message.payload.constraintCount > 1 ? "s" : ""
-          }) ✔️`,
+          ).toFixed(2)}ms (output size: ${prettyBytes(
+            message.payload.program.length
+          )}, constraints: ${message.payload.constraintCount})`,
           timestamp: new Date().toISOString(),
         });
         break;
@@ -303,14 +306,23 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
                 <TabPanels flexGrow={1} overflowY="scroll">
                   <TabPanel>
                     {output && (
-                      <Code
-                        display="block"
-                        whiteSpace="pre-wrap"
-                        bg="white"
-                        color={output.type == "error" ? "red" : "green"}
+                      <Alert
+                        status={output.type}
+                        color="gray.700"
+                        alignItems={
+                          output.type === "success" ? "center" : "flex-start"
+                        }
                       >
-                        [{output.timestamp}] {output.message}
-                      </Code>
+                        <AlertIcon />
+                        <Code
+                          bg="transparent"
+                          display="block"
+                          whiteSpace="pre"
+                          overflowX="auto"
+                        >
+                          {output.message}
+                        </Code>
+                      </Alert>
                     )}
                   </TabPanel>
                   {worker && artifacts && (
@@ -320,7 +332,7 @@ const Home: NextPage<HomeProps> = (props: HomeProps) => {
                   )}
                   <TabPanel>
                     {artifacts && (
-                      <Code display="block" whiteSpace="pre" bg="white">
+                      <Code display="block" whiteSpace="pre">
                         {JSON.stringify(artifacts.abi, null, 2)}
                       </Code>
                     )}

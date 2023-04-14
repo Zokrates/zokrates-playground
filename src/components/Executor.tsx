@@ -1,4 +1,6 @@
 import {
+  Alert,
+  AlertIcon,
   Box,
   Button,
   Code,
@@ -34,7 +36,7 @@ type InputState = {
 type OutputState = {
   type: string;
   message: string;
-  timestamp: string;
+  result?: string;
   logs?: string[];
 } | null;
 
@@ -150,10 +152,10 @@ const Executor = (props: ExecutorProps) => {
         setOutput({
           type: "success",
           logs: message.payload.logs,
-          message: `Program returned: ${message.payload.output} (took ${(
+          result: message.payload.output,
+          message: `Successfully computed in ${(
             message.span.end - message.span.start
-          ).toFixed(2)} ms) ✔️`,
-          timestamp: new Date().toISOString(),
+          ).toFixed(2)}ms`,
         });
         break;
       }
@@ -163,7 +165,6 @@ const Executor = (props: ExecutorProps) => {
         setOutput({
           type: "error",
           message: message.payload.error,
-          timestamp: new Date().toISOString(),
         });
       }
       default:
@@ -266,16 +267,39 @@ const Executor = (props: ExecutorProps) => {
         Run
       </Button>
       {output && (
-        <Code display="block" whiteSpace="pre-wrap" bg="white">
-          {output.logs && (
-            <Box mb={2}>
-              {output.logs.map((log: string) => `[LOG] ${log}\n`)}
+        <VStack gap="2" w="full" alignItems="flex-start">
+          <Alert status={output.type} color="gray.700">
+            <AlertIcon />
+            <Code
+              bg="transparent"
+              display="block"
+              whiteSpace="pre"
+              overflowX="auto"
+            >
+              {output.message}
+            </Code>
+          </Alert>
+          {output.result && (
+            <Box fontFamily="monospace" w="full">
+              <Box color="gray.500" textTransform="uppercase" mb={1}>
+                Output
+              </Box>
+              <Code display="block" whiteSpace="pre-wrap">
+                {output.result}
+              </Code>
             </Box>
           )}
-          <Box color={output.type == "error" ? "red" : "green"}>
-            {output.message}
-          </Box>
-        </Code>
+          {output.logs && output.logs.length > 0 && (
+            <Box fontFamily="monospace" w="full">
+              <Box color="gray.500" textTransform="uppercase" mb={1}>
+                Logs
+              </Box>
+              {output.logs.map((log: string, index: number) => (
+                <Box key={index}>{log}</Box>
+              ))}
+            </Box>
+          )}
+        </VStack>
       )}
     </VStack>
   );
