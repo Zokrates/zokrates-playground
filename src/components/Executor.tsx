@@ -34,7 +34,7 @@ type InputState = {
 };
 
 type OutputState = {
-  type: string;
+  type: "success" | "error";
   message: string;
   result?: string;
   logs?: string[];
